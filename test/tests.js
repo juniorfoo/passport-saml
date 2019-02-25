@@ -1052,7 +1052,7 @@ describe( 'passport-saml /', function() {
 
     });
 
-    describe( 'getAuthorizeUrl request signature checks /', function() {
+    describe.only( 'getAuthorizeUrl request signature checks /', function() {
       var fakeClock;
       beforeEach(function(){
           fakeClock = sinon.useFakeTimers(Date.parse('2014-05-28T00:13:09Z'));
@@ -1080,6 +1080,34 @@ describe( 'passport-saml /', function() {
           var qry = require('querystring').parse(require('url').parse(url).query);
           qry.SigAlg.should.match('http://www.w3.org/2001/04/xmldsig-more#rsa-sha256');
           qry.Signature.should.match('hel9NaoLU0brY/VhrQsY+lTtuAbTsT/ul6nZ/eVlSMXQRaKn5LTbKadzxmPghX7s4xoHwdah+yZHK/0u4StYSj4b5MKcqbsJapVr2R7H90z8YfGfR2C/G0Gng721YV9Da6VBzKg8Was91zQotgsMpZ9pGX1kPKi6cgFwPwM4NEFugn8AYgXEriNvO5+Q23K/MdBT2bgwRTj2FQCWTuQcgwbyWHXoquHztZ0lbh8UhY5BfQRv7c6D9XPkQEMMQFQeME4PIEg3JnynwFZk5wwhkphMd5nXxau+zt7Nfp4fRm0G8WYnxV1etBnWimwSglZVaSHFYeQBRsC2wvKSiVS8JA==');
+          qry.customQueryStringParam.should.match('CustomQueryStringParamValue');
+          done();
+        });
+      });
+
+      it( 'acme_tools request signed with callback', function( done ) {
+        var samlConfig = {
+          entryPoint: 'https://adfs.acme_tools.com/adfs/ls/',
+          issuer: 'acme_tools_com',
+          callbackUrl: 'https://relyingparty/adfs/postResponse',
+          privateCert: function(messageToSign, callback) {
+            messageToSign.SigAlg = 'fake_algorithm';
+            messageToSign.Signature = 'fake_signature';
+            callback(null, messageToSign);
+          },
+          authnContext: 'http://schemas.microsoft.com/ws/2008/06/identity/authenticationmethod/password',
+          identifierFormat: null,
+          signatureAlgorithm: 'sha256',
+          additionalParams: {
+            customQueryStringParam: 'CustomQueryStringParamValue'
+          }
+        };
+        var samlObj = new SAML( samlConfig );
+        samlObj.generateUniqueID = function () { return '12345678901234567890' };
+        samlObj.getAuthorizeUrl({}, {}, function(err, url) {
+          var qry = require('querystring').parse(require('url').parse(url).query);
+          qry.SigAlg.should.match('fake_algorithm');
+          qry.Signature.should.match('fake_signature');
           qry.customQueryStringParam.should.match('CustomQueryStringParamValue');
           done();
         });
